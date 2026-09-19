@@ -1,0 +1,2037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Ready Red Apple</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            background-color: #0d0f12;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ffffff;
+            overflow-x: hidden;
+            padding: 10px;
+        }
+
+        #game-wrapper {
+            position: relative;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 152, 0, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 4px solid #2d3748;
+            background: #1a202c;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            background-color: #111;
+            cursor: crosshair;
+        }
+
+        /* Screen Overlays */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease-in-out;
+            z-index: 10;
+            padding: 20px;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Defeat Screen Styling */
+        #defeat-screen {
+            background: linear-gradient(135deg, rgba(40, 0, 0, 0.92), rgba(120, 0, 0, 0.95));
+            backdrop-filter: blur(4px);
+        }
+
+        #defeat-screen h1 {
+            font-size: clamp(28px, 6vw, 54px);
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            color: #ff3333;
+            text-shadow: 0 0 15px rgba(255, 0, 0, 0.7), 4px 4px 0 #000;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            animation: pulseDefeat 1.5s infinite alternate;
+        }
+
+        #defeat-screen p {
+            font-size: clamp(16px, 3.5vw, 22px);
+            color: #f7fafc;
+            text-shadow: 2px 2px 4px #000;
+            font-weight: 600;
+            background: rgba(0,0,0,0.4);
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            cursor: pointer;
+        }
+
+        /* Victory Screen Styling */
+        #victory-screen {
+            background: linear-gradient(135deg, rgba(10, 40, 10, 0.92), rgba(20, 90, 20, 0.95));
+            backdrop-filter: blur(4px);
+        }
+
+        #victory-screen h1 {
+            font-size: clamp(40px, 8vw, 80px);
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            color: #ffea00;
+            text-shadow: 0 0 20px rgba(255, 234, 0, 0.8), 5px 5px 0 #000;
+            letter-spacing: 4px;
+            margin-bottom: 0px;
+            transform: rotate(-3deg);
+            animation: bounceVictory 1s infinite alternate ease-in-out;
+        }
+
+        #victory-screen p.subtext {
+            font-size: 13px;
+            color: #e2e8f0;
+            letter-spacing: 1px;
+            margin-bottom: 25px;
+            text-shadow: 1px 1px 2px #000;
+            opacity: 0.9;
+            font-style: italic;
+        }
+
+        #victory-screen p.restart {
+            font-size: clamp(16px, 3.5vw, 20px);
+            color: #ffffff;
+            text-shadow: 2px 2px 4px #000;
+            font-weight: 600;
+            background: rgba(0,0,0,0.4);
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            cursor: pointer;
+        }
+
+        /* Controls Legend Bar */
+        #bottom-controls-wrapper {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        #hearts-display {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            background: rgba(30, 41, 59, 0.9);
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 2px solid #ef4444;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+        }
+
+        .heart-icon {
+            font-size: 22px;
+            transition: transform 0.2s ease;
+        }
+
+        #audio-controls {
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #controls-bar {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+            color: #a0aec0;
+            background: #1a202c;
+            padding: 10px 16px;
+            border-radius: 20px;
+            border: 1px solid #2d3748;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .key {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-family: monospace;
+            border-bottom: 2px solid #4a5568;
+        }
+
+        .key.parry-key {
+            background: #0284c7;
+            color: #ffffff;
+            border-bottom-color: #0369a1;
+        }
+
+        .audio-btn {
+            background: rgba(30, 41, 59, 0.85);
+            color: #f8fafc;
+            border: 2px solid #3b82f6;
+            padding: 8px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .audio-btn:hover {
+            background: #3b82f6;
+            color: #ffffff;
+            transform: scale(1.05);
+        }
+
+        #track-btn {
+            border-color: #a855f7;
+        }
+
+        #track-btn:hover {
+            background: #a855f7;
+        }
+
+        /* Virtual Mobile D-Pad and Action Buttons */
+        #mobile-controls {
+            display: none;
+            width: 100%;
+            max-width: 900px;
+            margin-top: 10px;
+            justify-content: space-between;
+            align-items: center;
+            touch-action: none;
+        }
+
+        .touch-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .touch-btn {
+            background: rgba(30, 41, 59, 0.85);
+            color: #ffffff;
+            border: 2px solid #475569;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 18px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            active: scale(0.95);
+            min-width: 50px;
+            min-height: 50px;
+        }
+
+        .touch-btn:active, .touch-btn.pressed {
+            background: #3b82f6;
+            border-color: #60a5fa;
+            transform: scale(0.95);
+        }
+
+        .btn-shoot {
+            background: rgba(14, 116, 144, 0.85);
+            border-color: #06b6d4;
+        }
+
+        .btn-parry {
+            background: rgba(2, 132, 199, 0.85);
+            border-color: #38bdf8;
+        }
+
+        .btn-pot {
+            background: rgba(22, 163, 74, 0.85);
+            border-color: #4ade80;
+        }
+
+        /* Show mobile controls on mobile/touch screens or small viewports */
+        @media (max-width: 768px), (pointer: coarse) {
+            #mobile-controls {
+                display: flex;
+            }
+            #controls-bar {
+                display: none;
+            }
+        }
+
+        @keyframes pulseDefeat {
+            0% { transform: scale(0.98); }
+            100% { transform: scale(1.03); }
+        }
+
+        @keyframes bounceVictory {
+            0% { transform: scale(0.95) rotate(-3deg); }
+            100% { transform: scale(1.05) rotate(-1deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <canvas id="gameCanvas" width="900" height="500"></canvas>
+
+    <!-- DEFEAT OVERLAY -->
+    <div id="defeat-screen" class="overlay">
+        <h1>YOU HAVE BEEN DEFEATED</h1>
+        <p onclick="resetGame()">Press <span class="key">R</span> or Tap Here to Restart</p>
+    </div>
+
+    <!-- VICTORY OVERLAY -->
+    <div id="victory-screen" class="overlay">
+        <h1>KNOCKOUT!</h1>
+        <p class="subtext">you have defeated him</p>
+        <p class="restart" onclick="resetGame()">Press <span class="key">R</span> or Tap Here to Play Again</p>
+    </div>
+</div>
+
+<!-- TOUCH CONTROLS FOR MOBILE DEVICES -->
+<div id="mobile-controls">
+    <div class="touch-group">
+        <button class="touch-btn" id="btn-left">◀</button>
+        <button class="touch-btn" id="btn-right">▶</button>
+        <button class="touch-btn" id="btn-crouch">▼</button>
+        <button class="touch-btn" id="btn-jump">▲</button>
+    </div>
+    <div class="touch-group">
+        <button class="touch-btn btn-shoot" id="btn-shoot">💥</button>
+        <button class="touch-btn btn-parry" id="btn-parry">🛡️</button>
+        <button class="touch-btn btn-pot" id="btn-pot">🪴</button>
+    </div>
+</div>
+
+<div id="bottom-controls-wrapper">
+    <!-- HEARTS DISPLAY -->
+    <div id="hearts-display">
+        <span style="font-size:12px; font-weight:bold; color:#f8fafc; margin-right:4px;">HEALTH:</span>
+        <span class="heart-icon">❤️</span>
+        <span class="heart-icon">❤️</span>
+        <span class="heart-icon">❤️</span>
+    </div>
+
+    <!-- AUDIO CONTROLS -->
+    <div id="audio-controls">
+        <button id="music-btn" class="audio-btn" onclick="toggleMusic()">🎵 Music: OFF</button>
+        <button id="track-btn" class="audio-btn" onclick="cycleTrack()">🎶 Track: Classic Hero</button>
+    </div>
+
+    <!-- CONTROLS LEGEND BAR -->
+    <div id="controls-bar">
+        <div><span class="key">A</span> / <span class="key">D</span> or <span class="key">←</span> / <span class="key">→</span> Move</div>
+        <div><span class="key">Q</span> Jump</div>
+        <div><span class="key">S</span> or <span class="key">↓</span> Crouch (Dodge High)</div>
+        <div><span class="key parry-key">E</span> / <span class="key parry-key">W</span> Parry (Survive Shockwave!)</div>
+        <div><span class="key">Space</span> Shoot</div>
+        <div><span class="key" style="background: #16a34a; border-bottom-color: #15803d; color: #fff;">F</span> Seed / Juice Beam</div>
+        <div><span class="key">R</span> Restart</div>
+    </div>
+</div>
+
+<script>
+// Synthesized Web Audio API Background Music
+let audioCtx = null;
+let musicPlaying = false;
+let musicInterval = null;
+
+const tracks = [
+    {
+        name: "Classic Hero",
+        type: "square",
+        speed: 150,
+        bassType: "triangle",
+        notes: [
+            261.63, 329.63, 392.00, 523.25, 392.00, 329.63,
+            293.66, 349.23, 440.00, 587.33, 440.00, 349.23,
+            329.63, 392.00, 493.88, 659.25, 493.88, 392.00,
+            349.23, 440.00, 523.25, 698.46, 523.25, 440.00
+        ]
+    },
+    {
+        name: "Boss Action",
+        type: "sawtooth",
+        speed: 110,
+        bassType: "sawtooth",
+        notes: [
+            220.00, 220.00, 261.63, 220.00, 293.66, 220.00, 329.63, 293.66,
+            220.00, 220.00, 349.23, 329.63, 293.66, 261.63, 246.94, 220.00,
+            196.00, 196.00, 246.94, 196.00, 261.63, 196.00, 293.66, 261.63,
+            207.65, 207.65, 261.63, 207.65, 293.66, 329.63, 349.23, 392.00
+        ]
+    },
+    {
+        name: "Retro Chiptune",
+        type: "square",
+        speed: 120,
+        bassType: "square",
+        notes: [
+            329.63, 440.00, 523.25, 659.25, 523.25, 440.00, 392.00, 493.88,
+            587.33, 698.46, 587.33, 493.88, 349.23, 440.00, 523.25, 698.46,
+            523.25, 440.00, 329.63, 392.00, 493.88, 659.25, 493.88, 392.00
+        ]
+    },
+    {
+        name: "Garden Groove",
+        type: "triangle",
+        speed: 160,
+        bassType: "triangle",
+        notes: [
+            261.63, 329.63, 392.00, 440.00, 392.00, 329.63, 293.66, 349.23,
+            392.00, 440.00, 392.00, 349.23, 329.63, 392.00, 440.00, 523.25,
+            440.00, 392.00, 349.23, 293.66, 261.63, 329.63, 392.00, 261.63
+        ]
+    }
+];
+
+let currentTrackIdx = 0;
+let noteIdx = 0;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
+
+function playNote(freq, duration = 0.12, type = 'square') {
+    if (!audioCtx || !musicPlaying) return;
+    try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function startMusicLoop() {
+    if (musicInterval) clearInterval(musicInterval);
+    const track = tracks[currentTrackIdx];
+    musicInterval = setInterval(() => {
+        if (musicPlaying && gameState === 'PLAYING') {
+            const currentTrack = tracks[currentTrackIdx];
+            const freq = currentTrack.notes[noteIdx % currentTrack.notes.length];
+            playNote(freq, 0.14, currentTrack.type);
+            // Bass pulse
+            if (noteIdx % 3 === 0) {
+                playNote(freq / 2, 0.2, currentTrack.bassType);
+            }
+            noteIdx++;
+        }
+    }, track.speed);
+}
+
+function cycleTrack() {
+    initAudio();
+    currentTrackIdx = (currentTrackIdx + 1) % tracks.length;
+    const trackBtn = document.getElementById('track-btn');
+    trackBtn.innerText = `🎶 Track: ${tracks[currentTrackIdx].name}`;
+    noteIdx = 0;
+    if (musicPlaying) {
+        startMusicLoop();
+    }
+}
+
+function toggleMusic() {
+    initAudio();
+    musicPlaying = !musicPlaying;
+    const btn = document.getElementById('music-btn');
+    if (musicPlaying) {
+        btn.innerText = '🎵 Music: ON';
+        btn.style.borderColor = '#22c55e';
+        startMusicLoop();
+    } else {
+        btn.innerText = '🎵 Music: OFF';
+        btn.style.borderColor = '#ef4444';
+        if (musicInterval) clearInterval(musicInterval);
+    }
+}
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const defeatScreen = document.getElementById('defeat-screen');
+const victoryScreen = document.getElementById('victory-screen');
+
+// Game states: 'PLAYING', 'DEFEATED', 'VICTORY'
+let gameState = 'PLAYING';
+
+// World Constants
+const GROUND_Y = 420;
+const CANVAS_WIDTH = canvas.width;
+const CANVAS_HEIGHT = canvas.height;
+
+// Input handling
+const keys = {
+    left: false,
+    right: false,
+    crouch: false,
+    jump: false,
+    shoot: false,
+    shootPressed: false,
+    parry: false,
+    parryPressed: false,
+    usePot: false,
+    usePotPressed: false
+};
+
+window.addEventListener('keydown', (e) => {
+    initAudio();
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.crouch = true;
+    if (e.code === 'KeyQ') keys.jump = true;
+    if (e.code === 'KeyE' || e.code === 'KeyW') {
+        if (!keys.parryPressed && gameState === 'PLAYING') {
+            triggerParry();
+        }
+        keys.parry = true;
+        keys.parryPressed = true;
+    }
+    if (e.code === 'KeyF') {
+        if (!keys.usePotPressed && gameState === 'PLAYING') {
+            useFlowerPot();
+        }
+        keys.usePot = true;
+        keys.usePotPressed = true;
+    }
+    if (e.code === 'Space') {
+        if (!keys.shootPressed && gameState === 'PLAYING') {
+            shootPlayerBullet();
+        }
+        keys.shoot = true;
+        keys.shootPressed = true;
+        e.preventDefault();
+    }
+    if (e.code === 'KeyR') {
+        if (gameState !== 'PLAYING') {
+            resetGame();
+        }
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.crouch = false;
+    if (e.code === 'KeyQ') keys.jump = false;
+    if (e.code === 'KeyE' || e.code === 'KeyW') {
+        keys.parry = false;
+        keys.parryPressed = false;
+    }
+    if (e.code === 'KeyF') {
+        keys.usePot = false;
+        keys.usePotPressed = false;
+    }
+    if (e.code === 'Space') {
+        keys.shoot = false;
+        keys.shootPressed = false;
+    }
+});
+
+// Mobile Touch Control Bindings
+function bindTouchButton(btnId, keyName, onPress) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+
+    const start = (e) => {
+        e.preventDefault();
+        initAudio();
+        btn.classList.add('pressed');
+        if (onPress && !keys[keyName] && gameState === 'PLAYING') {
+            onPress();
+        }
+        keys[keyName] = true;
+    };
+
+    const end = (e) => {
+        e.preventDefault();
+        btn.classList.remove('pressed');
+        keys[keyName] = false;
+        if (keyName === 'shoot') keys.shootPressed = false;
+        if (keyName === 'parry') keys.parryPressed = false;
+        if (keyName === 'usePot') keys.usePotPressed = false;
+    };
+
+    btn.addEventListener('touchstart', start, { passive: false });
+    btn.addEventListener('touchend', end, { passive: false });
+    btn.addEventListener('touchcancel', end, { passive: false });
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', end);
+    btn.addEventListener('mouseleave', end);
+}
+
+bindTouchButton('btn-left', 'left');
+bindTouchButton('btn-right', 'right');
+bindTouchButton('btn-crouch', 'crouch');
+bindTouchButton('btn-jump', 'jump');
+bindTouchButton('btn-shoot', 'shoot', shootPlayerBullet);
+bindTouchButton('btn-parry', 'parry', triggerParry);
+bindTouchButton('btn-pot', 'usePot', useFlowerPot);
+
+const player = {
+    x: 120,
+    y: GROUND_Y - 70,
+    vy: 0,
+    gravity: 0.6,
+    jumpStrength: -12,
+    isGrounded: true,
+    width: 48,
+    height: 70,
+    normalHeight: 70,
+    crouchHeight: 35,
+    speed: 5.5,
+    hp: 3,
+    maxHp: 3,
+    flowerPots: 0,
+    maxFlowerPots: 5,
+    isCrouching: false,
+    flashTimer: 0,
+    shootCooldown: 0,
+    animTimer: 0,
+    armRecoil: 0,
+    parryWindow: 0,
+    parryCooldown: 0,
+    parryAuraAlpha: 0,
+    steamParticles: [],
+    capeAngle: 0
+};
+
+// Player Projectiles & Juice Beam State
+let playerBullets = [];
+let bossProjectiles = [];
+let particles = [];
+let floatingTexts = [];
+let backgroundFloatingLeaves = [];
+let juiceBeamActive = 0;
+
+for (let i = 0; i < 15; i++) {
+    backgroundFloatingLeaves.push({
+        x: Math.random() * CANVAS_WIDTH,
+        y: Math.random() * (GROUND_Y - 50),
+        size: 4 + Math.random() * 6,
+        speedX: -0.5 - Math.random() * 1.5,
+        speedY: 0.2 + Math.random() * 0.5,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: 0.01 + Math.random() * 0.03
+    });
+}
+
+function spawnParticles(x, y, color, count = 10, speedMult = 1) {
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = (Math.random() * 3 + 1) * speedMult;
+        particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            radius: Math.random() * 3 + 2,
+            color: color,
+            alpha: 1.0,
+            life: 20 + Math.random() * 20
+        });
+    }
+}
+
+function updatePlayer() {
+    let moveDir = 0;
+    if (keys.left) {
+        player.x -= player.speed;
+        moveDir = -1;
+    }
+    if (keys.right) {
+        player.x += player.speed;
+        moveDir = 1;
+    }
+
+    if (player.x < 10) player.x = 10;
+    if (player.x > CANVAS_WIDTH - player.width - 10) player.x = CANVAS_WIDTH - player.width - 10;
+
+    if (keys.shoot && gameState === 'PLAYING') {
+        shootPlayerBullet();
+    }
+
+    player.capeAngle = player.capeAngle * 0.8 + moveDir * 0.25;
+
+    if (keys.crouch && player.isGrounded) {
+        player.isCrouching = true;
+        player.height = player.crouchHeight;
+        player.y = GROUND_Y - player.crouchHeight;
+    } else {
+        if (player.isCrouching) {
+            player.isCrouching = false;
+            player.height = player.normalHeight;
+            player.y = GROUND_Y - player.normalHeight;
+        }
+    }
+
+    if (keys.jump && player.isGrounded && !player.isCrouching) {
+        player.vy = player.jumpStrength;
+        player.isGrounded = false;
+        spawnParticles(player.x + player.width / 2, GROUND_Y, '#cbd5e1', 6, 0.8);
+    }
+
+    if (!player.isGrounded) {
+        player.vy += player.gravity;
+        player.y += player.vy;
+
+        if (player.y >= GROUND_Y - player.height) {
+            player.y = GROUND_Y - player.height;
+            player.vy = 0;
+            player.isGrounded = true;
+            spawnParticles(player.x + player.width / 2, GROUND_Y, '#cbd5e1', 5, 0.6);
+        }
+    }
+
+    if (player.shootCooldown > 0) player.shootCooldown--;
+    if (player.armRecoil > 0) player.armRecoil--;
+    if (player.parryWindow > 0) player.parryWindow--;
+    if (player.parryCooldown > 0) player.parryCooldown--;
+    if (player.parryAuraAlpha > 0) player.parryAuraAlpha = Math.max(0, player.parryAuraAlpha - 0.04);
+    if (player.flashTimer > 0) player.flashTimer--;
+
+    player.animTimer += 0.08;
+
+    if (Math.random() < 0.2) {
+        player.steamParticles.push({
+            x: player.x + Math.random() * player.width,
+            y: player.y + player.height - 5,
+            radius: Math.random() * 2 + 1,
+            alpha: 0.6,
+            vy: -0.5 - Math.random() * 0.5
+        });
+    }
+
+    for (let i = player.steamParticles.length - 1; i >= 0; i--) {
+        let st = player.steamParticles[i];
+        st.y += st.vy;
+        st.alpha -= 0.02;
+        if (st.alpha <= 0) {
+            player.steamParticles.splice(i, 1);
+        }
+    }
+}
+
+const boss = {
+    x: 650,
+    y: GROUND_Y - 160,
+    width: 120,
+    height: 160,
+    baseWidth: 120,
+    baseHeight: 160,
+    hp: 675,
+    maxHp: 675,
+    phase: 1,
+    color: '#ff9800',
+    vx: 2.2,
+    vy: 0,
+    attackTimer: 0,
+    attackInterval: 100,
+    floatAngle: 0,
+    slamState: 'idle',
+    flashTimer: 0,
+    shockwaveTimer: 1500,
+    warningTimer: 0,
+    poisonTimer: 0,
+    poisonTickTimer: 0,
+    greenTintTimer: 0
+};
+
+function useFlowerPot() {
+    if (player.flowerPots < 1) return;
+
+    if (player.flowerPots >= 5) {
+        player.flowerPots = 0;
+        juiceBeamActive = 25;
+        
+        boss.hp -= 95;
+        boss.flashTimer = 8;
+        
+        spawnParticles(boss.x + boss.width / 2, boss.y + boss.height / 2, '#facc15', 35, 3);
+        spawnFloatingText(boss.x + boss.width / 2, boss.y - 20, 'JUICE BEAM! -95 DAMAGE', '#facc15');
+
+        checkBossPhaseAndDefeat();
+    } else if (player.flowerPots >= 1) {
+        player.flowerPots -= 1;
+
+        const bulletY = player.isCrouching ? player.y + 10 : player.y + 18;
+        playerBullets.push({
+            type: 'apple_seed',
+            x: player.x + player.width + 10,
+            y: bulletY,
+            vx: 14,
+            vy: 0,
+            radius: 8,
+            color: '#a3e635',
+            damage: 15
+        });
+
+        spawnParticles(player.x + player.width + 10, bulletY, '#84cc16', 8, 1);
+    }
+}
+
+function checkBossPhaseAndDefeat() {
+    if (boss.hp <= 525 && boss.phase === 1) {
+        boss.phase = 2;
+        boss.color = '#e65100';
+        boss.vx = 4.5;
+        boss.attackInterval = 55;
+        spawnParticles(boss.x + boss.width/2, boss.y + boss.height/2, '#e65100', 30, 2);
+        spawnFloatingText(CANVAS_WIDTH / 2, 100, 'PHASE 2!', '#f97316');
+    } else if (boss.hp <= 300 && boss.phase === 2) {
+        boss.phase = 3;
+        boss.color = '#ffd600';
+        boss.width = 130;
+        boss.height = 170;
+        boss.vx = 5;
+        boss.vy = 0;
+        boss.attackInterval = 42;
+        boss.shockwaveTimer = 1200;
+        spawnParticles(boss.x + boss.width/2, boss.y + boss.height/2, '#ffd600', 45, 3);
+        spawnFloatingText(CANVAS_WIDTH / 2, 100, 'FINAL PHASE!', '#eab308');
+    } else if (boss.hp <= 0) {
+        boss.hp = 0;
+        gameState = 'VICTORY';
+        spawnParticles(boss.x + boss.width/2, boss.y + boss.height/2, '#ffd600', 80, 4);
+        victoryScreen.classList.add('active');
+    }
+}
+
+function spawnFloatingText(x, y, text, color = '#38bdf8') {
+    floatingTexts.push({
+        x: x,
+        y: y,
+        text: text,
+        color: color,
+        alpha: 1.0,
+        vy: -1.5,
+        life: 30
+    });
+}
+
+function triggerParry() {
+    if (player.parryCooldown > 0) return;
+    
+    player.parryWindow = 18;
+    player.parryCooldown = 600;
+    player.parryAuraAlpha = 1.0;
+    
+    spawnParticles(player.x + player.width / 2, player.y + player.height / 2, '#38bdf8', 12, 1.5);
+}
+
+function shootPlayerBullet() {
+    if (player.shootCooldown > 0) return;
+    
+    if (player.flowerPots < player.maxFlowerPots) {
+        const prevPots = Math.floor(player.flowerPots);
+        player.flowerPots = Math.min(player.maxFlowerPots, player.flowerPots + 0.05);
+        if (Math.floor(player.flowerPots) > prevPots) {
+            spawnFloatingText(player.x + player.width / 2, player.y - 35, '+1 POT READY!', '#84cc16');
+        }
+    }
+
+    const bulletY = player.isCrouching ? player.y + 10 : player.y + 18;
+    
+    playerBullets.push({
+        x: player.x + player.width + 10,
+        y: bulletY,
+        vx: 13,
+        vy: (Math.random() - 0.5) * 0.5,
+        radius: 6,
+        color: '#38bdf8',
+        isReflected: false,
+        damage: 4
+    });
+
+    spawnParticles(player.x + player.width + 10, bulletY, '#0284c7', 4, 0.8);
+    player.shootCooldown = 18;
+    player.armRecoil = 5;
+}
+
+function resetGame() {
+    gameState = 'PLAYING';
+    defeatScreen.classList.remove('active');
+    victoryScreen.classList.remove('active');
+
+    player.x = 120;
+    player.y = GROUND_Y - player.normalHeight;
+    player.vy = 0;
+    player.isGrounded = true;
+    player.height = player.normalHeight;
+    player.hp = player.maxHp;
+    player.flowerPots = 0;
+    player.isCrouching = false;
+    player.flashTimer = 0;
+    player.shootCooldown = 0;
+    player.animTimer = 0;
+    player.armRecoil = 0;
+    player.parryWindow = 0;
+    player.parryCooldown = 0;
+    player.parryAuraAlpha = 0;
+    player.steamParticles = [];
+    player.capeAngle = 0;
+
+    juiceBeamActive = 0;
+
+    playerBullets = [];
+    bossProjectiles = [];
+    particles = [];
+    floatingTexts = [];
+
+    boss.x = 650;
+    boss.y = GROUND_Y - boss.baseHeight;
+    boss.width = boss.baseWidth;
+    boss.height = boss.baseHeight;
+    boss.hp = 675;
+    boss.maxHp = 675;
+    boss.phase = 1;
+    boss.color = '#ff9800';
+    boss.vx = 2.2;
+    boss.vy = 0;
+    boss.attackTimer = 0;
+    boss.attackInterval = 100;
+    boss.floatAngle = 0;
+    boss.slamState = 'idle';
+    boss.flashTimer = 0;
+    boss.shockwaveTimer = 2100;
+    boss.warningTimer = 0;
+    boss.poisonTimer = 0;
+    boss.poisonTickTimer = 0;
+    boss.greenTintTimer = 0;
+}
+
+function updateBoss() {
+    if (boss.flashTimer > 0) boss.flashTimer--;
+    if (boss.warningTimer > 0) boss.warningTimer--;
+    if (boss.greenTintTimer > 0) boss.greenTintTimer--;
+
+    if (boss.poisonTimer > 0) {
+        boss.poisonTimer--;
+        boss.poisonTickTimer++;
+        if (boss.poisonTickTimer >= 60) {
+            boss.poisonTickTimer = 0;
+            boss.hp -= 5;
+            spawnParticles(boss.x + Math.random() * boss.width, boss.y + Math.random() * boss.height, '#22c55e', 5, 1);
+            spawnFloatingText(boss.x + boss.width / 2, boss.y + 20, '-5 POISON', '#4ade80');
+            checkBossPhaseAndDefeat();
+        }
+    } else {
+        boss.poisonTickTimer = 0;
+    }
+
+    boss.floatAngle += 0.05;
+
+    if (boss.phase === 1) {
+        boss.y = (GROUND_Y - 170) + Math.sin(boss.floatAngle) * 20;
+        boss.x += boss.vx;
+        if (boss.x > CANVAS_WIDTH - boss.width - 30 || boss.x < 520) {
+            boss.vx *= -1;
+        }
+
+        boss.attackTimer++;
+        if (boss.attackTimer >= boss.attackInterval) {
+            boss.attackTimer = 0;
+
+            if (Math.random() < 0.5) {
+                bossProjectiles.push({
+                    type: 'homing_chunk',
+                    x: boss.x,
+                    y: GROUND_Y - 55,
+                    vx: -4.5,
+                    vy: 0,
+                    radius: 10,
+                    color: '#f59e0b',
+                    rot: Math.random() * Math.PI
+                });
+                spawnParticles(boss.x, GROUND_Y - 55, '#f59e0b', 8);
+            } else {
+                spawnFloatingText(boss.x + boss.width / 2, boss.y - 20, '⚠️ LEAF RAIN! ⚠️', '#4ade80');
+                for (let l = 0; l < 3; l++) {
+                    const dropX = 60 + Math.random() * (CANVAS_WIDTH - 160);
+                    bossProjectiles.push({
+                        type: 'falling_leaf',
+                        x: dropX,
+                        y: -30 - Math.random() * 40,
+                        vx: (Math.random() - 0.5) * 1.0,
+                        vy: 2.0 + Math.random() * 1.2,
+                        radius: 16,
+                        color: '#4ade80',
+                        rot: Math.random() * Math.PI * 2,
+                        rotSpeed: 0.04 + Math.random() * 0.04
+                    });
+                }
+            }
+        }
+    } else if (boss.phase === 2) {
+        if (boss.slamState === 'idle') {
+            boss.x += boss.vx;
+            boss.y = (GROUND_Y - 180) + Math.sin(boss.floatAngle * 1.8) * 15;
+
+            if (boss.x > CANVAS_WIDTH - boss.width - 20 || boss.x < 480) {
+                boss.vx *= -1;
+            }
+
+            boss.attackTimer++;
+            if (boss.attackTimer >= boss.attackInterval) {
+                boss.attackTimer = 0;
+                
+                if (Math.random() < 0.45) {
+                    boss.slamState = 'rising';
+                } else {
+                    const isHigh = Math.random() < 0.5;
+                    bossProjectiles.push({
+                        type: isHigh ? 'chunk' : 'wave',
+                        x: boss.x,
+                        y: isHigh ? GROUND_Y - 55 : GROUND_Y - 20,
+                        vx: -9,
+                        vy: 0,
+                        radius: isHigh ? 13 : 16,
+                        color: isHigh ? '#d97706' : '#ea580c',
+                        rot: Math.random() * Math.PI
+                    });
+                }
+            }
+        } else if (boss.slamState === 'rising') {
+            boss.y -= 7;
+            if (boss.y <= 70) {
+                boss.slamState = 'slamming';
+            }
+        } else if (boss.slamState === 'slamming') {
+            boss.y += 22;
+            if (boss.y >= GROUND_Y - boss.height) {
+                boss.y = GROUND_Y - boss.height;
+                boss.slamState = 'recovering';
+                boss.attackTimer = -20;
+
+                bossProjectiles.push({
+                    type: 'wave',
+                    x: boss.x,
+                    y: GROUND_Y - 18,
+                    vx: -10,
+                    vy: 0,
+                    radius: 18,
+                    color: '#ea580c'
+                });
+                spawnParticles(boss.x, GROUND_Y - 10, '#f97316', 20, 2);
+            }
+        } else if (boss.slamState === 'recovering') {
+            boss.y -= 3;
+            if (boss.y <= GROUND_Y - 180) {
+                boss.slamState = 'idle';
+            }
+        }
+    } else if (boss.phase === 3) {
+        boss.shockwaveTimer--;
+
+        if (boss.shockwaveTimer <= 0 && boss.slamState === 'idle') {
+            boss.slamState = 'shockwave_prep';
+            boss.warningTimer = 120;
+            spawnFloatingText(CANVAS_WIDTH / 2, 120, '⚠️ WARNING: MEGA SHOCKWAVE! ⚠️', '#ef4444');
+        }
+
+        if (boss.slamState === 'shockwave_prep') {
+            boss.warningTimer = Math.max(boss.warningTimer, 10);
+            const targetX = CANVAS_WIDTH / 2 - boss.width / 2;
+            boss.x += (targetX - boss.x) * 0.1;
+            boss.y -= 5;
+            if (boss.y <= 50) {
+                boss.slamState = 'shockwave_slam';
+            }
+        } else if (boss.slamState === 'shockwave_slam') {
+            boss.y += 26;
+            if (boss.y >= GROUND_Y - boss.height) {
+                boss.y = GROUND_Y - boss.height;
+                boss.slamState = 'recovering';
+                boss.shockwaveTimer = 2100;
+
+                bossProjectiles.push({
+                    type: 'instakill_shockwave',
+                    x: boss.x + boss.width / 2,
+                    y: GROUND_Y - 25,
+                    vx: -14,
+                    vy: 0,
+                    radius: 35,
+                    width: 70,
+                    height: 50,
+                    color: '#ff0000'
+                });
+
+                bossProjectiles.push({
+                    type: 'instakill_shockwave',
+                    x: boss.x + boss.width / 2,
+                    y: GROUND_Y - 25,
+                    vx: 14,
+                    vy: 0,
+                    radius: 35,
+                    width: 70,
+                    height: 50,
+                    color: '#ff0000'
+                });
+
+                spawnParticles(boss.x + boss.width / 2, GROUND_Y - 10, '#ff3333', 35, 3);
+            }
+        } else {
+            boss.x += boss.vx;
+            boss.y = (GROUND_Y - boss.height - 20) + Math.sin(boss.floatAngle * 2.5) * 12;
+
+            if (boss.x > CANVAS_WIDTH - boss.width - 20 || boss.x < 420) {
+                boss.vx *= -1;
+                spawnParticles(boss.x + (boss.vx < 0 ? boss.width : 0), boss.y + boss.height/2, '#ffd600', 8);
+            }
+
+            boss.attackTimer++;
+            if (boss.attackTimer >= boss.attackInterval) {
+                boss.attackTimer = 0;
+
+                const targetX = player.x + player.width / 2;
+                const targetY = player.isCrouching ? player.y + 15 : player.y + 35;
+                const originX = boss.x + boss.width / 2;
+                const originY = boss.y + boss.height / 2;
+
+                const baseAngle = Math.atan2(targetY - originY, targetX - originX);
+
+                [-0.15, 0.15].forEach(angleOffset => {
+                    const finalAngle = baseAngle + angleOffset;
+                    bossProjectiles.push({
+                        type: 'chunk',
+                        x: originX,
+                        y: originY,
+                        vx: Math.cos(finalAngle) * 7.5,
+                        vy: Math.sin(finalAngle) * 7.5,
+                        radius: 12,
+                        color: '#fbbf24',
+                        rot: Math.random() * Math.PI
+                    });
+                });
+
+                spawnParticles(originX, originY, '#fbbf24', 8);
+            }
+        }
+    }
+}
+
+function updateProjectilesAndCollisions() {
+    if (player.flashTimer <= 0 && gameState === 'PLAYING') {
+        if (player.x + player.width > boss.x &&
+            player.x < boss.x + boss.width &&
+            player.y + player.height > boss.y &&
+            player.y < boss.y + boss.height) {
+
+            player.hp -= 1;
+            player.flashTimer = 45;
+
+            const knockDir = (player.x + player.width / 2) < (boss.x + boss.width / 2) ? -1 : 1;
+            player.x += knockDir * 75;
+            if (player.x < 10) player.x = 10;
+            if (player.x > CANVAS_WIDTH - player.width - 10) player.x = CANVAS_WIDTH - player.width - 10;
+
+            player.vy = -9;
+            player.isGrounded = false;
+
+            spawnParticles(player.x + player.width / 2, player.y + player.height / 2, '#ef4444', 25, 3.5);
+            spawnFloatingText(player.x + player.width / 2, player.y - 20, 'KNOCKBACK! -1 HEART', '#ef4444');
+
+            if (player.hp <= 0) {
+                player.hp = 0;
+                gameState = 'DEFEATED';
+                defeatScreen.classList.add('active');
+            }
+        }
+    }
+
+    for (let i = playerBullets.length - 1; i >= 0; i--) {
+        let b = playerBullets[i];
+
+        if (b.isReflected) {
+            const targetX = boss.x + boss.width / 2;
+            const targetY = boss.y + boss.height / 2;
+            const dx = targetX - b.x;
+            const dy = targetY - b.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 0) {
+                b.vx = (dx / dist) * 18;
+                b.vy = (dy / dist) * 18;
+            }
+            if (Math.random() < 0.5) {
+                spawnParticles(b.x, b.y, '#38bdf8', 1, 0.4);
+            }
+        }
+
+        b.x += b.vx;
+        b.y += b.vy;
+
+        if (b.x + b.radius > boss.x &&
+            b.x - b.radius < boss.x + boss.width &&
+            b.y + b.radius > boss.y &&
+            b.y - b.radius < boss.y + boss.height) {
+
+            if (b.type === 'apple_seed') {
+                boss.hp -= 15;
+                boss.poisonTimer = 600;
+                boss.poisonTickTimer = 0;
+                boss.greenTintTimer = 300;
+                boss.flashTimer = 6;
+
+                spawnParticles(b.x, b.y, '#84cc16', 25, 2.5);
+                spawnFloatingText(boss.x + boss.width / 2, boss.y - 10, '-15 SEED HIT! POISONED!', '#84cc16');
+            } else {
+                boss.hp -= (b.damage || 4);
+                boss.flashTimer = 4;
+
+                if (b.isReflected) {
+                    spawnParticles(b.x, b.y, '#38bdf8', 22, 2.5);
+                    spawnFloatingText(boss.x + boss.width / 2, boss.y - 10, '-10 PARRY REFLECT!', '#38bdf8');
+                } else {
+                    spawnParticles(b.x, b.y, '#38bdf8', 5, 1.2);
+                }
+                
+                spawnParticles(b.x, b.y, boss.color, 4, 1);
+            }
+
+            playerBullets.splice(i, 1);
+
+            checkBossPhaseAndDefeat();
+            continue;
+        }
+
+        if (b.x > CANVAS_WIDTH + 30 || b.x < -30) {
+            playerBullets.splice(i, 1);
+        }
+    }
+
+    for (let i = bossProjectiles.length - 1; i >= 0; i--) {
+        let p = bossProjectiles[i];
+
+        if (p.type === 'homing_chunk') {
+            const targetX = player.x + player.width / 2;
+            if (p.x > targetX && !p.hasPassed) {
+                const targetY = player.isCrouching ? player.y + 15 : player.y + 35;
+                const dx = targetX - p.x;
+                const dy = targetY - p.y;
+                const angle = Math.atan2(dy, dx);
+                
+                p.vx = p.vx * 0.96 + Math.cos(angle) * 0.22;
+                p.vy = p.vy * 0.96 + Math.sin(angle) * 0.22;
+            } else {
+                p.hasPassed = true;
+            }
+        } else if (p.type === 'falling_leaf') {
+            p.rot += p.rotSpeed || 0.05;
+            p.x += p.vx + Math.sin(p.y * 0.05) * 1.2;
+        }
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        const isParrying = player.parryWindow > 0;
+        const parryMargin = isParrying ? 40 : 0;
+
+        if (p.x + p.radius > player.x - parryMargin &&
+            p.x - p.radius < player.x + player.width + parryMargin &&
+            p.y + p.radius > player.y - parryMargin &&
+            p.y - p.radius < player.y + player.height + parryMargin) {
+
+            if (isParrying) {
+                const targetX = boss.x + boss.width / 2;
+                const targetY = boss.y + boss.height / 2;
+                const dx = targetX - p.x;
+                const dy = targetY - p.y;
+                const dist = Math.hypot(dx, dy) || 1;
+
+                playerBullets.push({
+                    x: p.x,
+                    y: p.y,
+                    vx: (dx / dist) * 18,
+                    vy: (dy / dist) * 18,
+                    radius: p.radius + 6,
+                    color: '#38bdf8',
+                    isReflected: true,
+                    damage: p.type === 'instakill_shockwave' ? 25 : 10
+                });
+
+                spawnParticles(p.x, p.y, '#38bdf8', 25, 3.0);
+                spawnFloatingText(player.x + player.width / 2, player.y - 20, 'PARRIED!', '#38bdf8');
+                
+                player.parryAuraAlpha = 1.0;
+                bossProjectiles.splice(i, 1);
+                continue;
+            }
+
+            if (p.type === 'instakill_shockwave') {
+                player.hp = 0;
+                gameState = 'DEFEATED';
+                defeatScreen.classList.add('active');
+                spawnParticles(player.x + player.width/2, player.y + player.height/2, '#ef4444', 40, 3.5);
+                bossProjectiles.splice(i, 1);
+                continue;
+            }
+
+            if (player.flashTimer <= 0) {
+                player.hp -= 1;
+                player.flashTimer = 35;
+                spawnParticles(player.x + player.width/2, player.y + player.height/2, '#ef4444', 15, 2);
+
+                bossProjectiles.splice(i, 1);
+
+                if (player.hp <= 0) {
+                    player.hp = 0;
+                    gameState = 'DEFEATED';
+                    defeatScreen.classList.add('active');
+                }
+                continue;
+            }
+        }
+
+        if (p.x < -40 || p.x > CANVAS_WIDTH + 40 || p.y > GROUND_Y + 40 || p.y < -40) {
+            bossProjectiles.splice(i, 1);
+        }
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let pt = particles[i];
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.alpha -= 1 / pt.life;
+        if (pt.alpha <= 0) {
+            particles.splice(i, 1);
+        }
+    }
+
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        let ft = floatingTexts[i];
+        ft.y += ft.vy;
+        ft.alpha -= 1 / ft.life;
+        if (ft.alpha <= 0) {
+            floatingTexts.splice(i, 1);
+        }
+    }
+}
+
+function drawEnvironment() {
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+    skyGrad.addColorStop(0, '#1a3a2a');
+    skyGrad.addColorStop(0.6, '#0f261c');
+    skyGrad.addColorStop(1, '#091710');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    ctx.fillStyle = '#2d1e18';
+    for (let x = 0; x < CANVAS_WIDTH; x += 45) {
+        ctx.fillRect(x, GROUND_Y - 90, 32, 90);
+        ctx.beginPath();
+        ctx.moveTo(x, GROUND_Y - 90);
+        ctx.lineTo(x + 16, GROUND_Y - 110);
+        ctx.lineTo(x + 32, GROUND_Y - 90);
+        ctx.fill();
+    }
+    ctx.fillStyle = '#221611';
+    ctx.fillRect(0, GROUND_Y - 75, CANVAS_WIDTH, 12);
+    ctx.fillRect(0, GROUND_Y - 35, CANVAS_WIDTH, 12);
+
+    ctx.fillStyle = '#166534';
+    ctx.fillRect(35, GROUND_Y - 180, 16, 180);
+    ctx.fillStyle = '#eab308';
+    for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI) / 4;
+        ctx.beginPath();
+        ctx.ellipse(43 + Math.cos(angle) * 30, (GROUND_Y - 180) + Math.sin(angle) * 30, 16, 8, angle, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.fillStyle = '#78350f';
+    ctx.beginPath();
+    ctx.arc(43, GROUND_Y - 180, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#166534';
+    ctx.fillRect(CANVAS_WIDTH - 51, GROUND_Y - 180, 16, 180);
+    ctx.fillStyle = '#eab308';
+    for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI) / 4;
+        ctx.beginPath();
+        ctx.ellipse((CANVAS_WIDTH - 43) + Math.cos(angle) * 30, (GROUND_Y - 180) + Math.sin(angle) * 30, 16, 8, angle, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.fillStyle = '#78350f';
+    ctx.beginPath();
+    ctx.arc(CANVAS_WIDTH - 43, GROUND_Y - 180, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    backgroundFloatingLeaves.forEach(leaf => {
+        leaf.x += leaf.speedX;
+        leaf.y += leaf.speedY;
+        leaf.rot += leaf.rotSpeed;
+
+        if (leaf.x < -20) leaf.x = CANVAS_WIDTH + 20;
+        if (leaf.x > CANVAS_WIDTH + 20) leaf.x = -20;
+        if (leaf.y > GROUND_Y - 20) leaf.y = 50;
+
+        ctx.save();
+        ctx.translate(leaf.x, leaf.y);
+        ctx.rotate(leaf.rot);
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, leaf.size, leaf.size / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    });
+
+    ctx.fillStyle = '#3f2212';
+    ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, CANVAS_HEIGHT - GROUND_Y);
+
+    ctx.fillStyle = '#15803d';
+    ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, 14);
+
+    ctx.fillStyle = '#22c55e';
+    for (let x = 10; x < CANVAS_WIDTH; x += 35) {
+        ctx.beginPath();
+        ctx.moveTo(x, GROUND_Y);
+        ctx.lineTo(x + 6, GROUND_Y - 10);
+        ctx.lineTo(x + 12, GROUND_Y);
+        ctx.fill();
+    }
+}
+
+function drawPlayer() {
+    ctx.save();
+
+    if (player.flashTimer % 4 > 2) {
+        ctx.globalAlpha = 0.5;
+    }
+
+    const x = player.x;
+    const y = player.y;
+    const w = player.width;
+    const h = player.height;
+
+    player.steamParticles.forEach(st => {
+        ctx.fillStyle = `rgba(255, 255, 255, ${st.alpha})`;
+        ctx.beginPath();
+        ctx.arc(st.x, st.y, st.radius, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    if (player.parryAuraAlpha > 0) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(56, 189, 248, ${player.parryAuraAlpha})`;
+        ctx.fillStyle = `rgba(56, 189, 248, ${player.parryAuraAlpha * 0.35})`;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y + h / 2, Math.max(w, h) * 0.95, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(x + w/2, GROUND_Y - 2, w/1.3, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    const capeAnchorX = x + 8;
+    const capeAnchorY = y + 14;
+    const capeLength = h * 0.85;
+    const capeSwing = player.capeAngle;
+
+    ctx.fillStyle = '#991b1b';
+    ctx.strokeStyle = '#450a0a';
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(capeAnchorX, capeAnchorY);
+    const capeTipX = capeAnchorX - 26 + Math.sin(player.animTimer * 2 + capeSwing) * 8 + capeSwing * 42;
+    const capeTipY = capeAnchorY + capeLength;
+    
+    ctx.quadraticCurveTo(
+        capeAnchorX - 22 + capeSwing * 32, capeAnchorY + capeLength * 0.5,
+        capeTipX, capeTipY
+    );
+    ctx.quadraticCurveTo(
+        capeAnchorX - 6 + capeSwing * 22, capeAnchorY + capeLength * 0.88,
+        x + w - 12, capeAnchorY + 10
+    );
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.moveTo(capeAnchorX, capeAnchorY);
+    ctx.quadraticCurveTo(
+        capeAnchorX - 14 + capeSwing * 26, capeAnchorY + capeLength * 0.5,
+        capeTipX + 8, capeTipY - 6
+    );
+    ctx.lineTo(capeAnchorX + 10, capeAnchorY + 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = '#4a2810';
+    ctx.beginPath();
+    ctx.fillRect(x + w * 0.46, y - 12, 5, 16);
+
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath();
+    ctx.ellipse(x + w * 0.46 + 8, y - 10, 11, 5, Math.PI / 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    const bodyGrad = ctx.createRadialGradient(
+        x + w * 0.35, y + h * 0.35, w * 0.1,
+        x + w * 0.5, y + h * 0.5, w * 0.55
+    );
+    bodyGrad.addColorStop(0, '#f87171');
+    bodyGrad.addColorStop(0.35, '#ef4444');
+    bodyGrad.addColorStop(0.8, '#dc2626');
+    bodyGrad.addColorStop(1, '#7f1d1d');
+    ctx.fillStyle = bodyGrad;
+
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y + 6);
+    ctx.bezierCurveTo(x + w * 0.85, y - 2, x + w * 1.05, y + h * 0.4, x + w * 0.9, y + h * 0.85);
+    ctx.bezierCurveTo(x + w * 0.75, y + h + 3, x + w * 0.55, y + h + 1, x + w * 0.5, y + h - 2);
+    ctx.bezierCurveTo(x + w * 0.45, y + h + 1, x + w * 0.25, y + h + 3, x + w * 0.1, y + h * 0.85);
+    ctx.bezierCurveTo(x - w * 0.05, y + h * 0.4, x + w * 0.15, y - 2, x + w * 0.5, y + 6);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.beginPath();
+    ctx.ellipse(x + w * 0.28, y + h * 0.3, w * 0.12, h * 0.2, -Math.PI / 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    const eyeY = player.isCrouching ? y + 14 : y + 22;
+    
+    ctx.strokeStyle = '#450a0a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    if (keys.shoot || player.armRecoil > 0) {
+        ctx.moveTo(x + w * 0.42, eyeY - 8);
+        ctx.lineTo(x + w * 0.60, eyeY - 4);
+        ctx.moveTo(x + w * 0.88, eyeY - 8);
+        ctx.lineTo(x + w * 0.70, eyeY - 4);
+    } else {
+        ctx.moveTo(x + w * 0.42, eyeY - 7);
+        ctx.lineTo(x + w * 0.58, eyeY - 7);
+        ctx.moveTo(x + w * 0.72, eyeY - 7);
+        ctx.lineTo(x + w * 0.88, eyeY - 7);
+    }
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(x + w * 0.52, eyeY, 6, player.isCrouching ? 4 : 9, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + w * 0.78, eyeY, 6, player.isCrouching ? 4 : 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(x + w * 0.54, eyeY + (player.isCrouching ? 0 : 2), 3.5, 0, Math.PI * 2);
+    ctx.arc(x + w * 0.80, eyeY + (player.isCrouching ? 0 : 2), 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x + w * 0.52, eyeY - 1, 1.3, 0, Math.PI * 2);
+    ctx.arc(x + w * 0.78, eyeY - 1, 1.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 8;
+
+    const armX = x + w - 4 - player.armRecoil;
+    const armY = y + h * 0.45;
+    ctx.beginPath();
+    ctx.moveTo(x + w - 10, y + h * 0.45);
+    ctx.lineTo(armX + 18, armY);
+    ctx.stroke();
+
+    ctx.fillStyle = '#f1f5f9';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(armX + 12, armY, 5, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = player.parryWindow > 0 ? '#38bdf8' : '#ffffff';
+    ctx.beginPath();
+    ctx.arc(armX + 22, armY, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(armX + 19, armY - 3);
+    ctx.lineTo(armX + 23, armY - 3);
+    ctx.moveTo(armX + 19, armY + 3);
+    ctx.lineTo(armX + 23, armY + 3);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+function drawBoss() {
+    ctx.save();
+
+    if (boss.flashTimer > 0) {
+        ctx.fillStyle = '#ffffff';
+    }
+
+    const x = boss.x;
+    const y = boss.y;
+    const w = boss.width;
+    const h = boss.height;
+
+    if (boss.warningTimer > 0 || boss.slamState === 'shockwave_prep') {
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 30px "Impact", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 4;
+        ctx.strokeText('⚡ WARNING: MEGA SHOCKWAVE INCOMING! PARRY TO SURVIVE! ⚡', CANVAS_WIDTH / 2, 75);
+        ctx.fillText('⚡ WARNING: MEGA SHOCKWAVE INCOMING! PARRY TO SURVIVE! ⚡', CANVAS_WIDTH / 2, 75);
+    }
+
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(x + w/2, GROUND_Y - 2, w/1.6, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (boss.phase === 3) {
+        ctx.shadowColor = '#fbbf24';
+        ctx.shadowBlur = 25;
+    }
+
+    if (boss.flashTimer <= 0) {
+        const mangoGrad = ctx.createRadialGradient(
+            x + w * 0.4, y + h * 0.3, w * 0.1,
+            x + w * 0.5, y + h * 0.5, w * 0.6
+        );
+        if (boss.greenTintTimer > 0) {
+            mangoGrad.addColorStop(0, '#a3e635');
+            mangoGrad.addColorStop(0.5, '#22c55e');
+            mangoGrad.addColorStop(1, '#15803d');
+        } else if (boss.phase === 1) {
+            mangoGrad.addColorStop(0, '#ffe082');
+            mangoGrad.addColorStop(0.6, '#ff9800');
+            mangoGrad.addColorStop(1, '#f57c00');
+        } else if (boss.phase === 2) {
+            mangoGrad.addColorStop(0, '#ffb74d');
+            mangoGrad.addColorStop(0.5, '#f57c00');
+            mangoGrad.addColorStop(1, '#d84315');
+        } else {
+            mangoGrad.addColorStop(0, '#ffffff');
+            mangoGrad.addColorStop(0.4, '#ffee58');
+            mangoGrad.addColorStop(1, '#f57f17');
+        }
+        ctx.fillStyle = mangoGrad;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.5, y);
+    ctx.bezierCurveTo(x + w * 1.1, y + h * 0.2, x + w * 1.05, y + h * 0.85, x + w * 0.45, y + h);
+    ctx.bezierCurveTo(x - w * 0.1, y + h * 0.9, x - w * 0.05, y + h * 0.2, x + w * 0.5, y);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(x + w * 0.48, y - 18, 10, 22);
+
+    ctx.fillStyle = '#2e7d32';
+    ctx.beginPath();
+    ctx.ellipse(x + w * 0.48 + 16, y - 16, 18, 7, Math.PI / 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    const eyeY = y + h * 0.38;
+    ctx.save();
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur = 18;
+    
+    ctx.strokeStyle = '#280000';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.20, eyeY - 14);
+    ctx.lineTo(x + w * 0.44, eyeY - 6);
+    ctx.moveTo(x + w * 0.80, eyeY - 14);
+    ctx.lineTo(x + w * 0.56, eyeY - 6);
+    ctx.stroke();
+
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.ellipse(x + w * 0.31, eyeY, 11, 14, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(x + w * 0.69, eyeY, 11, 14, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffea00';
+    ctx.beginPath();
+    ctx.arc(x + w * 0.33, eyeY, 4, 0, Math.PI * 2);
+    ctx.arc(x + w * 0.67, eyeY, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x + w * 0.31, eyeY - 3, 2, 0, Math.PI * 2);
+    ctx.arc(x + w * 0.65, eyeY - 3, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    const mouthY = y + h * 0.62;
+    ctx.save();
+    ctx.fillStyle = '#1a0000';
+    ctx.strokeStyle = '#450a0a';
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.22, mouthY);
+    ctx.quadraticCurveTo(x + w * 0.5, mouthY + 28, x + w * 0.78, mouthY);
+    ctx.quadraticCurveTo(x + w * 0.5, mouthY + 4, x + w * 0.22, mouthY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#f8fafc';
+    const toothCount = 5;
+    const mouthWidth = w * 0.56;
+    const mouthStartX = x + w * 0.22;
+    for (let i = 0; i < toothCount; i++) {
+        const tx = mouthStartX + (mouthWidth / toothCount) * i + 4;
+        ctx.beginPath();
+        ctx.moveTo(tx, mouthY + 2);
+        ctx.lineTo(tx + 6, mouthY + 12);
+        ctx.lineTo(tx + 12, mouthY + 2);
+        ctx.closePath();
+        ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.restore();
+}
+
+function drawProjectilesAndParticles() {
+    if (juiceBeamActive > 0) {
+        juiceBeamActive--;
+        ctx.save();
+        const startY = player.isCrouching ? player.y + 15 : player.y + 25;
+        
+        ctx.fillStyle = 'rgba(250, 204, 21, 0.45)';
+        ctx.fillRect(player.x + player.width, startY - 22, CANVAS_WIDTH, 44);
+        
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(player.x + player.width, startY - 8, CANVAS_WIDTH, 16);
+        
+        for (let k = 0; k < 6; k++) {
+            const rx = player.x + player.width + Math.random() * (CANVAS_WIDTH - player.x);
+            const ry = startY + (Math.random() - 0.5) * 30;
+            spawnParticles(rx, ry, '#facc15', 2, 0.8);
+        }
+        ctx.restore();
+    }
+
+    playerBullets.forEach(b => {
+        if (b.type === 'apple_seed') {
+            ctx.save();
+            ctx.fillStyle = b.color;
+            ctx.shadowColor = '#84cc16';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.ellipse(b.x, b.y, b.radius, b.radius * 0.6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        } else {
+            ctx.fillStyle = b.color;
+            ctx.shadowColor = b.color;
+            ctx.shadowBlur = b.isReflected ? 20 : 8;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    });
+    ctx.shadowBlur = 0;
+
+    bossProjectiles.forEach(p => {
+        if (p.type === 'instakill_shockwave') {
+            ctx.save();
+            ctx.fillStyle = '#ef4444';
+            ctx.shadowColor = '#ff0000';
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.ellipse(p.x, GROUND_Y - 12, 35, 25, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            ctx.restore();
+        } else if (p.type === 'falling_leaf') {
+            if (p.y < GROUND_Y) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 6]);
+                ctx.beginPath();
+                ctx.moveTo(p.x, Math.max(0, p.y));
+                ctx.lineTo(p.x, GROUND_Y);
+                ctx.stroke();
+
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
+                ctx.beginPath();
+                ctx.ellipse(p.x, GROUND_Y - 2, 20, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot || 0);
+
+            ctx.shadowColor = '#22c55e';
+            ctx.shadowBlur = 14;
+
+            ctx.fillStyle = '#4ade80';
+            ctx.strokeStyle = '#15803d';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, p.radius * 1.3, p.radius * 0.7, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-p.radius, 0);
+            ctx.lineTo(p.radius, 0);
+            ctx.stroke();
+
+            ctx.restore();
+        } else if (p.type === 'wave') {
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, p.radius * 1.8, p.radius * 0.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot || 0);
+
+            ctx.fillStyle = p.color || '#f59e0b';
+            ctx.strokeStyle = '#b45309';
+            ctx.lineWidth = 2;
+
+            const size = p.radius * 1.5;
+            ctx.beginPath();
+            ctx.rect(-size / 2, -size / 2, size, size);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#fef08a';
+            ctx.fillRect(-size / 4, -size / 4, size / 2, size / 2);
+
+            ctx.restore();
+        }
+    });
+
+    particles.forEach(pt => {
+        ctx.fillStyle = pt.color;
+        ctx.globalAlpha = pt.alpha;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1.0;
+
+    floatingTexts.forEach(ft => {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, ft.alpha);
+        ctx.font = 'bold 20px "Impact", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = ft.color;
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+    });
+}
+
+function updateHeartsUI() {
+    const container = document.getElementById('hearts-display');
+    if (!container) return;
+    let heartsHTML = '<span style="font-size:12px; font-weight:bold; color:#f8fafc; margin-right:4px;">HEALTH:</span>';
+    for (let i = 0; i < player.maxHp; i++) {
+        if (i < player.hp) {
+            heartsHTML += '<span class="heart-icon" style="color:#ef4444;">❤️</span>';
+        } else {
+            heartsHTML += '<span class="heart-icon" style="opacity:0.25; filter:grayscale(100%);">🖤</span>';
+        }
+    }
+    container.innerHTML = heartsHTML;
+}
+
+function drawHUD() {
+    updateHeartsUI();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px "Segoe UI", sans-serif';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 4;
+    ctx.textAlign = 'left';
+    ctx.fillText('THE READY RED APPLE', 20, 32);
+
+    const parrySecsLeft = Math.ceil(player.parryCooldown / 60);
+    ctx.font = 'bold 13px "Segoe UI", sans-serif';
+    if (player.parryCooldown <= 0) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('PARRY [E/W/🛡️]: READY', 20, 56);
+    } else {
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(`PARRY [E/W/🛡️]: COOLDOWN (${parrySecsLeft}s)`, 20, 56);
+    }
+
+    ctx.font = 'bold 12px "Segoe UI", sans-serif';
+    ctx.fillStyle = '#84cc16';
+    ctx.fillText('FLOWER POTS [F/🪴]:', 20, 82);
+
+    for (let i = 0; i < player.maxFlowerPots; i++) {
+        const potX = 145 + i * 26;
+        const potY = 70;
+        const fillAmount = Math.max(0, Math.min(1, player.flowerPots - i));
+
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.moveTo(potX, potY + 4);
+        ctx.lineTo(potX + 16, potY + 4);
+        ctx.lineTo(potX + 13, potY + 16);
+        ctx.lineTo(potX + 3, potY + 16);
+        ctx.closePath();
+        ctx.fill();
+
+        if (fillAmount > 0) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(potX, potY + 4);
+            ctx.lineTo(potX + 16, potY + 4);
+            ctx.lineTo(potX + 13, potY + 16);
+            ctx.lineTo(potX + 3, potY + 16);
+            ctx.closePath();
+            ctx.clip();
+
+            ctx.fillStyle = fillAmount >= 1 ? '#b45309' : '#d97706';
+            const fillHeight = 12 * fillAmount;
+            ctx.fillRect(potX - 2, potY + 16 - fillHeight, 20, fillHeight + 2);
+            ctx.restore();
+        }
+
+        ctx.fillStyle = fillAmount >= 1 ? '#d97706' : '#64748b';
+        ctx.fillRect(potX - 1, potY, 18, 4);
+
+        if (fillAmount > 0) {
+            ctx.fillStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.ellipse(potX + 8, potY - 3, 4 * fillAmount, 2 * fillAmount, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (fillAmount >= 1) {
+                ctx.fillStyle = player.flowerPots >= 5 ? '#eab308' : '#ef4444';
+                ctx.beginPath();
+                ctx.arc(potX + 8, potY - 6, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    if (player.flowerPots >= 5) {
+        ctx.fillStyle = '#facc15';
+        ctx.font = 'bold 12px "Segoe UI", sans-serif';
+        ctx.fillText('★ BEAM READY! ★', 280, 82);
+    }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px "Segoe UI", sans-serif';
+    ctx.fillText(`MANGO (PHASE ${boss.phase}):`, 520, 32);
+
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(520, 42, 350, 22);
+
+    const healthPercent = Math.max(0, boss.hp / boss.maxHp);
+    ctx.fillStyle = boss.greenTintTimer > 0 ? '#22c55e' : boss.color;
+    ctx.fillRect(520, 42, 350 * healthPercent, 22);
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(520, 42, 350, 22);
+    ctx.shadowBlur = 0;
+}
+
+function gameLoop() {
+    if (gameState === 'PLAYING') {
+        updatePlayer();
+        updateBoss();
+        updateProjectilesAndCollisions();
+    }
+
+    drawEnvironment();
+    drawPlayer();
+    drawBoss();
+    drawProjectilesAndParticles();
+    drawHUD();
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Start Main Game Loop
+gameLoop();
+</script>
+
+</body>
+</html>
